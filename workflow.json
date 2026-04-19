@@ -1,0 +1,392 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "q": "has:attachment filename:pdf (resume OR cv OR application) newer_than:7d"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "afadb697-0b31-4472-8da7-8b0d88024ce0",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VRf2vhNoYWp6vEjw",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{$json.id}}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f2215efe-570b-4170-bdfd-18407880006f",
+      "name": "Get a message",
+      "webhookId": "b545c014-910d-4e88-97c3-17fda2f8c3ca",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VRf2vhNoYWp6vEjw",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "attachment_0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "4eca0c58-eac3-4d43-80dd-09e05d796d9a",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI resume screening assistant.\n\nAnalyze the resume text below.\n\nTasks:\n1. Detect the most likely target job role of the candidate.\n2. Score the candidate out of 100 based on:\n- role fit\n- skills\n- projects\n- experience\n- resume quality\n\n3. Give verdict:\n85+ = Strong Shortlist\n70-84 = Consider\n55-69 = Review Later\nBelow 55 = Low Match\n\nPriority Rules:\n85+ = Top Candidate\n70-84 = Good Candidate\nBelow 70 = Hold\n\nAlso generate a one-line recruiter note summarizing hiring potential.\n\n4. Give strengths and weaknesses.\n\nReturn ONLY valid JSON:\n\n{\n  \"name\":\"\",\n  \"role_detected\":\"\",\n  \"score\":0,\n  \"verdict\":\"\",\n  \"priority\":\"\",\n  \"strengths\":\"\",\n  \"weaknesses\":\"\",\n  \"recruiter_note\":\"\"\n}\nResume Text:\n{{$json.text}}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        624,
+        0
+      ],
+      "id": "68b3e469-5136-4aa0-99d6-7ac66c73f1f2",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        560,
+        208
+      ],
+      "id": "43eb6162-aeed-4b20-baf5-39086d482479",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "3KJwj6ggqpIKPlEa",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $json.text;\n\nraw = raw.replace(/```json/g, \"\")\n         .replace(/```/g, \"\")\n         .trim();\n\nreturn [\n  {\n    json: JSON.parse(raw)\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        0
+      ],
+      "id": "0c3ee8e0-3e68-44a3-8e6b-9d9e261316c2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1_fewKI4BfQPZI3UZnnKL2PvhKfxGPxlLvV3YMXbfSDY",
+          "mode": "list",
+          "cachedResultName": "Talent Flow",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_fewKI4BfQPZI3UZnnKL2PvhKfxGPxlLvV3YMXbfSDY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_fewKI4BfQPZI3UZnnKL2PvhKfxGPxlLvV3YMXbfSDY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{$json.name}}",
+            "Role": "={{$json.role_detected}}",
+            "Score": "={{$json.score}}",
+            "Verdict": "={{$json.verdict}}",
+            "Priority": "={{$json.priority}}",
+            "Strengths": "={{$json.strengths}}",
+            "Weaknesses": "={{ $json.weaknesses }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Role",
+              "displayName": "Role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Verdict",
+              "displayName": "Verdict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Strengths",
+              "displayName": "Strengths",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Weaknesses",
+              "displayName": "Weaknesses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "bc27a7fb-fe4e-4c7d-ac46-9ad977438fe2",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "sp9T4V1xybIuK9Be",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "45134cee-c085-4dce-9419-d5fcb87c6d39",
+              "leftValue": "={{$json.score}}",
+              "rightValue": "=85",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        256
+      ],
+      "id": "9ce13e40-adf9-44c1-ae7f-e2640f18d811",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "bedantbeura16@gmail.com",
+        "subject": "=🚨 New Shortlisted Candidate: {{$json.name}}",
+        "emailType": "text",
+        "message": "=Top candidate detected by TalentFlow AI.  Name: {{$json.name}}  Role: {{$json.role_detected}}  Score: {{$json.score}}  Verdict: {{$json.verdict}}  Strengths: {{$json.strengths}}  Recruiter Note: {{$json.recruiter_note}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        160
+      ],
+      "id": "ed632fe9-d563-4f59-86aa-334c038a1333",
+      "name": "Send a message",
+      "webhookId": "5bbfa8b6-f0eb-440f-a1f3-42a8a508fd18",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VRf2vhNoYWp6vEjw",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4d3855e6-1b2a-4d8c-9f63-b5b9c66e0250",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c67f9110156a15240602d6b6bedca33e0379e5e2ef0ff5ee944dcc23083ba854"
+  },
+  "id": "PxR3GWRQSWm7erYw",
+  "tags": []
+}
